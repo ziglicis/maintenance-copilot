@@ -127,11 +127,6 @@ def top_attributions(model: lgb.Booster, x: pd.DataFrame, k: int = 3) -> pd.Data
     return out
 
 
-def sensor_of(feature: str) -> str:
-    """Map a feature name such as 's11_m20' back to its sensor, 's11'."""
-    return feature.split("_")[0]
-
-
 # --------------------------------------------------------------------------- deep model
 
 def make_windows(

@@ -127,6 +127,16 @@ def feature_columns(frame: pd.DataFrame) -> list[str]:
     return [c for c in frame.columns if c not in ("unit", "cycle")]
 
 
+def sensor_of(feature: str) -> str:
+    """Map a feature name such as 's11_m20' back to its sensor, 's11'.
+
+    Lives here rather than in models so the app can decode a feature name without
+    importing the training stack. Loading torch, lightgbm and scikit-learn into the
+    Streamlit process to split a string is two seconds nobody needs to wait for.
+    """
+    return feature.split("_")[0]
+
+
 def split_engines(train: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
     """Hold out whole engines for validation. Splitting by row would leak."""
     units = np.sort(train["unit"].unique())

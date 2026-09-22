@@ -18,7 +18,7 @@ import anthropic
 import pandas as pd
 from pydantic import BaseModel, Field
 
-from copilot import config, data, models, telemetry
+from copilot import config, data, telemetry
 
 _HERE = Path(__file__).parent
 MANUAL = (_HERE / "manual.md").read_text()
@@ -113,7 +113,7 @@ def _sensor_table(row: pd.Series, sensors: list[str], history: pd.DataFrame) -> 
 def build_prompt(row: pd.Series, sensors: list[str], history: pd.DataFrame) -> str:
     """Assemble the engine context. Everything the model may cite is in here."""
     drivers = [
-        f"{row[f'driver{i}']} ({data.SENSOR_DESCRIPTIONS[models.sensor_of(row[f'driver{i}'])]}), "
+        f"{row[f'driver{i}']} ({data.SENSOR_DESCRIPTIONS[data.sensor_of(row[f'driver{i}'])]}), "
         f"contribution {row[f'driver{i}_contrib']:+.1f} cycles"
         for i in (1, 2, 3)
         if f"driver{i}" in row.index
