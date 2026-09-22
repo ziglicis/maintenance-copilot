@@ -33,9 +33,18 @@ TIER_MARK = {"Red": "🔴", "Amber": "🟡", "Green": "🟢"}
 # The hover toolbar adds nothing here and shows up in screenshots and demos.
 PLOTLY_CONFIG = {"displayModeBar": False}
 
+# Plotly renders in its own SVG and does not inherit the page font, so the family is
+# repeated here. The fallback matters: the font is fetched over the network.
+FONT = "Inter, -apple-system, BlinkMacSystemFont, sans-serif"
 
-def style(fig: go.Figure, height: int = 320, legend: bool = False) -> go.Figure:
-    """Recessive chrome, readable ink, no chartjunk."""
+
+def style(fig: go.Figure, height: int = 320, legend: bool = False, grid: str = "y") -> go.Figure:
+    """Recessive chrome, readable ink, no chartjunk.
+
+    Gridlines run across the value axis only, so they help read a magnitude without
+    boxing the data in. `grid` names that axis: "y" for vertical bars and time series,
+    "x" for horizontal bars, "none" where the marks speak for themselves.
+    """
     # Title and legend both live in the top margin, so the margin has to be tall enough
     # for both or they overlap. The title is pinned to the top of the figure itself
     # (yref container) and the legend sits just above the plot area, below it.
@@ -45,9 +54,9 @@ def style(fig: go.Figure, height: int = 320, legend: bool = False) -> go.Figure:
         margin=dict(l=8, r=8, t=top_margin, b=8),
         paper_bgcolor=SURFACE,
         plot_bgcolor=SURFACE,
-        font=dict(color=INK_SECONDARY, size=12),
+        font=dict(color=INK_SECONDARY, size=12, family=FONT),
         title=dict(
-            font=dict(color=INK, size=14),
+            font=dict(color=INK, size=15, family=FONT, weight=600),
             x=0,
             xanchor="left",
             xref="container",
@@ -60,6 +69,7 @@ def style(fig: go.Figure, height: int = 320, legend: bool = False) -> go.Figure:
         legend=dict(orientation="h", yanchor="bottom", y=1.0, x=0, font=dict(color=INK_SECONDARY)),
         hovermode="x unified",
     )
-    fig.update_xaxes(gridcolor=GRID, zeroline=False, linecolor=GRID, tickfont=dict(color=INK_MUTED))
-    fig.update_yaxes(gridcolor=GRID, zeroline=False, linecolor=GRID, tickfont=dict(color=INK_MUTED))
+    axis = dict(zeroline=False, showline=False, ticks="", tickfont=dict(color=INK_MUTED, family=FONT))
+    fig.update_xaxes(showgrid=grid == "x", gridcolor=GRID, **axis)
+    fig.update_yaxes(showgrid=grid == "y", gridcolor=GRID, **axis)
     return fig

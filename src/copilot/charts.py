@@ -97,7 +97,7 @@ def attribution_chart(row: pd.Series) -> go.Figure:
     # honest framing: it shows at a glance whether the drivers push life up or down.
     span = max(abs(v) for v in values) or 1.0
     fig.update_xaxes(range=[-span * 1.4, span * 1.4], zeroline=True, zerolinecolor=theme.GRID)
-    return theme.style(fig, height=300)
+    return theme.style(fig, height=300, grid="x")
 
 
 def policy_chart(results: pd.DataFrame) -> go.Figure:
