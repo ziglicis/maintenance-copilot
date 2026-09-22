@@ -1,4 +1,4 @@
-"""Streamlit entrypoint: sidebar controls, then routing.
+"""Streamlit entrypoint: shared controls, then routing.
 
 Run with:  uv run streamlit run src/copilot/app.py
 
@@ -13,7 +13,7 @@ from __future__ import annotations
 import streamlit as st
 
 from copilot import shared
-from copilot.views import demo, evaluation, operations, overview
+from copilot.views import business_case, engine, evaluation, fleet, operations, overview
 
 st.set_page_config(page_title="Predictive maintenance copilot", layout="wide")
 
@@ -28,33 +28,51 @@ def main() -> None:
     llm_model = shared.model_picker()
 
     st.navigation(
-        [
-            st.Page(
-                lambda: overview.body(metrics, simulation, shared.current_assumptions()),
-                title="Overview",
-                icon=":material/insights:",
-                url_path="overview",
-                default=True,
-            ),
-            st.Page(
-                lambda: demo.body(predictions, simulation, metrics, llm_model),
-                title="Live demo",
-                icon=":material/precision_manufacturing:",
-                url_path="demo",
-            ),
-            st.Page(
-                lambda: evaluation.body(predictions, metrics),
-                title="Evaluation",
-                icon=":material/query_stats:",
-                url_path="evaluation",
-            ),
-            st.Page(
-                lambda: operations.body(metrics, llm_model),
-                title="Operations",
-                icon=":material/speed:",
-                url_path="operations",
-            ),
-        ]
+        {
+            "Start here": [
+                st.Page(
+                    lambda: overview.body(metrics, simulation, shared.current_assumptions()),
+                    title="Overview",
+                    icon=":material/insights:",
+                    url_path="overview",
+                    default=True,
+                ),
+            ],
+            "Operate": [
+                st.Page(
+                    lambda: fleet.body(predictions),
+                    title="Fleet",
+                    icon=":material/dashboard:",
+                    url_path="fleet",
+                ),
+                st.Page(
+                    lambda: engine.body(predictions, metrics, llm_model),
+                    title="Engine detail",
+                    icon=":material/precision_manufacturing:",
+                    url_path="engine",
+                ),
+                st.Page(
+                    lambda: business_case.body(simulation),
+                    title="Business case",
+                    icon=":material/payments:",
+                    url_path="business-case",
+                ),
+            ],
+            "Evidence": [
+                st.Page(
+                    lambda: evaluation.body(predictions, metrics),
+                    title="Evaluation",
+                    icon=":material/query_stats:",
+                    url_path="evaluation",
+                ),
+                st.Page(
+                    lambda: operations.body(metrics, llm_model),
+                    title="Operations",
+                    icon=":material/speed:",
+                    url_path="operations",
+                ),
+            ],
+        }
     ).run()
 
 

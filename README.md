@@ -125,9 +125,9 @@ below 15, where warnings arrive too late to act on.
 | `src/copilot/theme.py` | The validated colour palette |
 | `src/copilot/app.py` | Entrypoint: sidebar controls and page routing |
 | `src/copilot/shared.py` | Cached artifact loaders and the sidebar controls |
-| `src/copilot/views/` | One module per page, each a plain `body()` function |
+| `src/copilot/views/` | One module per page (overview, fleet, engine, business case, evaluation, operations), each a plain `body()` function |
 | `scripts/train.py` | Orchestration: the one command that produces everything |
-| `tests/test_smoke.py` | Labels, leakage, replay metrics, groundedness, cost model, every page render |
+| `tests/` | Six files by concern: data, models, evaluate, simulator, workorder, app |
 
 Anything that can change a reported number lives in the package and is under test.
 `scripts/train.py` only wires those pieces together.
