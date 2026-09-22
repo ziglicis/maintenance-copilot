@@ -79,30 +79,30 @@ def assumption_form() -> simulator.Assumptions:
         st.caption("Every number behind the savings figure. Nothing is hidden in the arithmetic.")
         top = st.columns(4)
         cost_unscheduled = top[0].number_input(
-            "Unscheduled failure ($)", value=float(current.cost_unscheduled), step=50_000.0
+            "Unscheduled failure ($)", value=float(current.cost_unscheduled), step=50_000.0, key="cost_unscheduled"
         )
         cost_scheduled = top[1].number_input(
-            "Scheduled maintenance ($)", value=float(current.cost_scheduled), step=10_000.0
+            "Scheduled maintenance ($)", value=float(current.cost_scheduled), step=10_000.0, key="cost_scheduled"
         )
         downtime_unscheduled = top[2].number_input(
-            "Downtime, unscheduled (days)", value=float(current.downtime_unscheduled), step=1.0
+            "Downtime, unscheduled (days)", value=float(current.downtime_unscheduled), step=1.0, key="downtime_unscheduled"
         )
         downtime_scheduled = top[3].number_input(
-            "Downtime, scheduled (days)", value=float(current.downtime_scheduled), step=1.0
+            "Downtime, scheduled (days)", value=float(current.downtime_scheduled), step=1.0, key="downtime_scheduled"
         )
 
         bottom = st.columns(4)
         cost_per_wasted_cycle = bottom[0].number_input(
-            "Value of a wasted cycle ($)", value=float(current.cost_per_wasted_cycle), step=50.0
+            "Value of a wasted cycle ($)", value=float(current.cost_per_wasted_cycle), step=50.0, key="cost_per_wasted_cycle"
         )
         fixed_interval = bottom[1].number_input(
-            "Fixed interval (cycles)", value=int(current.fixed_interval), step=10
+            "Fixed interval (cycles)", value=int(current.fixed_interval), step=10, key="fixed_interval"
         )
         predictive_threshold = bottom[2].number_input(
-            "Pull threshold (cycles)", value=int(current.predictive_threshold), step=5
+            "Pull threshold (cycles)", value=int(current.predictive_threshold), step=5, key="predictive_threshold"
         )
         parts_lead_cycles = bottom[3].number_input(
-            "Parts and slot lead time (cycles)", value=int(current.parts_lead_cycles), step=5
+            "Parts and slot lead time (cycles)", value=int(current.parts_lead_cycles), step=5, key="parts_lead_cycles"
         )
         st.form_submit_button("Recalculate", type="primary")
 
@@ -124,4 +124,4 @@ def assumption_form() -> simulator.Assumptions:
 def model_picker() -> str:
     """Which model writes the work orders. Lives in the sidebar so every page agrees."""
     st.sidebar.header("Work order generator")
-    return st.sidebar.selectbox("Model", options=config.LLM_MODELS, index=0)
+    return st.sidebar.selectbox("Model", options=list(config.LLM_MODELS), index=0, key="llm_model")
