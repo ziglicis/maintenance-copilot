@@ -1,0 +1,19 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --group dev
+      - run: uv run pytest -q
+# The app render test skips here: it needs artifacts, and building them means a 12 MB
+# download from NASA plus a minute of training. Keeping CI offline keeps it honest
+# about what broke. Run `uv run python scripts/train.py` locally before pushing.
