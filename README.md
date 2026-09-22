@@ -123,9 +123,11 @@ below 15, where warnings arrive too late to act on.
 | `src/copilot/simulator.py` | The three policies and the cost model |
 | `src/copilot/charts.py` | Every chart, built from the shared palette |
 | `src/copilot/theme.py` | The validated colour palette |
-| `src/copilot/app.py` | Four tab Streamlit UI, layout only |
+| `src/copilot/app.py` | Entrypoint: sidebar controls and page routing |
+| `src/copilot/shared.py` | Cached artifact loaders and the sidebar controls |
+| `src/copilot/views/` | One module per page, each a plain `body()` function |
 | `scripts/train.py` | Orchestration: the one command that produces everything |
-| `tests/test_smoke.py` | Labels, leakage, replay metrics, groundedness, cost model, app render |
+| `tests/test_smoke.py` | Labels, leakage, replay metrics, groundedness, cost model, every page render |
 
 Anything that can change a reported number lives in the package and is under test.
 `scripts/train.py` only wires those pieces together.
