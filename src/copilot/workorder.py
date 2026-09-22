@@ -154,6 +154,13 @@ Write the work order."""
 
 SENSOR_MENTION = re.compile(r"\bs(\d{1,2})\b")
 NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
+TASK_CODE = re.compile(r"TSK-\d+")
+PART_NUMBER = re.compile(r"P-[A-Z]+-\d+")
+
+# The manual is the only vocabulary a work order may draw task codes and parts from.
+# Anything else is invented, however plausible it looks.
+KNOWN_TASKS = frozenset(TASK_CODE.findall(MANUAL))
+KNOWN_PARTS = frozenset(PART_NUMBER.findall(MANUAL))
 
 
 @dataclass(frozen=True)
@@ -256,6 +263,12 @@ def check_grounded(order: WorkOrder, row: pd.Series, history: pd.DataFrame) -> l
         for s in sorted(mentioned - cited_sensors, key=lambda x: int(x[1:]))
     )
 
+    instructions = " ".join(order.recommended_actions + order.parts_to_stage + [order.justification])
+    cited_tasks = set(TASK_CODE.findall(instructions))
+    cited_parts = set(PART_NUMBER.findall(instructions))
+    invented = sorted((cited_tasks - KNOWN_TASKS) | (cited_parts - KNOWN_PARTS))
+    n_codes = len(cited_tasks) + len(cited_parts)
+
     id_ok = order.engine_id == int(row["unit"])
     rul_ok = order.predicted_rul == int(round(row["point"]))
 
@@ -274,6 +287,9 @@ def check_grounded(order: WorkOrder, row: pd.Series, history: pd.DataFrame) -> l
         Check("Prose is backed by evidence", not orphans,
               f"{len(mentioned)} sensors named in prose, {len(mentioned) - len(orphans)} verified",
               orphans),
+        Check("Task codes and parts exist in the manual", not invented,
+              f"{n_codes - len(invented)} of {n_codes} found in the manual",
+              tuple(f"{c} does not appear in the maintenance manual" for c in invented)),
         Check("Engine id unchanged", id_ok,
               f"engine {order.engine_id}",
               () if id_ok else (f"cited {order.engine_id}, actual {int(row['unit'])}",)),

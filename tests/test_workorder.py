@@ -130,3 +130,22 @@ def test_evidence_audit_reports_every_claim():
     audit = workorder.evidence_audit(_order(), ROW, HISTORY)
     assert list(audit["sensor"]) == ["s11"]
     assert set(["cited value", "actual", "delta", "value ok", "trend ok", "range ok"]) <= set(audit.columns)
+
+
+def test_groundedness_rejects_an_invented_task_code():
+    """A plausible-looking code the manual has never heard of is the same as a made-up value."""
+    order = _order(recommended_actions=["Run TSK-999 turbine teardown"])
+    assert any("TSK-999" in f for f in _failures(order))
+
+
+def test_groundedness_rejects_an_invented_part_number():
+    order = _order(parts_to_stage=["P-HPC-9999"])
+    assert any("P-HPC-9999" in f for f in _failures(order))
+
+
+def test_groundedness_accepts_real_codes_and_prose_without_codes():
+    order = _order(
+        recommended_actions=["Ground the aircraft at next landing.", "Run TSK-201 borescope."],
+        parts_to_stage=["P-HPC-5051"],
+    )
+    assert _failures(order) == []

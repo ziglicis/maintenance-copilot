@@ -78,7 +78,21 @@ It may explain them and may not change them. Output is constrained to a Pydantic
 schema through structured outputs, so schema validity is guaranteed rather than
 retried. Every sensor value the work order cites is then checked against the source
 data, and a failing work order is flagged in the UI rather than shown as if it were
-fine.
+fine. Eight rules run on every work order: sensors exist, values match within tolerance,
+trend directions match, healthy ranges match the baseline, every sensor named in the
+prose is backed by verified evidence, task codes and parts exist in the manual, and the
+engine id and prediction are unchanged.
+
+Measured over 24 calls across 6 engines and 2 models:
+
+| Model | Groundedness | Self-agreement | Latency | Cost |
+|---|---|---|---|---|
+| Opus 5, medium effort | 100% | 100% | 14.0 s | $0.037 |
+| Haiku 4.5 | 75% | 100% | 8.7 s | $0.007 |
+
+Every Haiku failure was the same rule, naming a sensor in the justification that it had
+not listed in evidence. Both models were self-consistent across repeats, but they
+disagreed with each other on 1 of 6 engines.
 
 ### Policy simulator
 
@@ -141,5 +155,9 @@ Anything that can change a reported number lives in the package and is under tes
 - Interval coverage is 77% against a nominal 80%. The gap is structural: validation
   labels are capped at 125 cycles while several test engines truly have more life than
   that, so those can never be covered.
-- There is no human rating rubric or LLM judge for the work orders yet. The telemetry
-  table has room for them.
+- There is no human rating rubric or LLM judge yet. Work order quality is measured
+  automatically only, by `scripts/eval_workorders.py`.
+- Groundedness is not correctness. Every rule can pass while the diagnosis is still
+  wrong: on one engine, two models both passed all eight rules and named different
+  subsystems. The agreement figure is reported beside the groundedness rate for exactly
+  that reason.

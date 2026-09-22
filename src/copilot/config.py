@@ -9,6 +9,7 @@ MODEL_DIR = ARTIFACT_DIR / "models"
 PREDICTIONS = ARTIFACT_DIR / "predictions.parquet"
 SIMULATION = ARTIFACT_DIR / "simulation.parquet"
 METRICS = ARTIFACT_DIR / "metrics.json"
+WORKORDER_EVAL = ARTIFACT_DIR / "workorder_eval.json"
 TELEMETRY_DB = ARTIFACT_DIR / "telemetry.db"
 
 DATA_URL = "https://phm-datasets.s3.amazonaws.com/NASA/6.+Turbofan+Engine+Degradation+Simulation+Data+Set.zip"
