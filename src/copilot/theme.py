@@ -26,7 +26,12 @@ NEGATIVE = "#e34948"
 
 # Reserved status colours for risk tiers. Always shipped with the tier name.
 TIER_COLOURS = {"Red": "#d03b3b", "Amber": "#fab219", "Green": "#0ca30c"}
-TIER_MARK = {"Red": "●", "Amber": "●", "Green": "●"}
+# Metric labels cannot be styled, so the tier cue has to carry its own colour.
+TIER_MARK = {"Red": "🔴", "Amber": "🟡", "Green": "🟢"}
+
+
+# The hover toolbar adds nothing here and shows up in screenshots and demos.
+PLOTLY_CONFIG = {"displayModeBar": False}
 
 
 def style(fig: go.Figure, height: int = 320, legend: bool = False) -> go.Figure:

@@ -7,7 +7,7 @@ import json
 import pandas as pd
 import streamlit as st
 
-from copilot import charts, config, data, shared
+from copilot import charts, config, data, shared, theme
 
 
 def body(predictions: pd.DataFrame, metrics: dict) -> None:
@@ -31,8 +31,8 @@ def body(predictions: pd.DataFrame, metrics: dict) -> None:
 
     snapshot = shared.fleet_snapshot(predictions)
     left, right = st.columns(2)
-    left.plotly_chart(charts.accuracy_scatter(snapshot), use_container_width=True)
-    right.plotly_chart(charts.lead_time_histogram(predictions), use_container_width=True)
+    left.plotly_chart(charts.accuracy_scatter(snapshot), use_container_width=True, config=theme.PLOTLY_CONFIG)
+    right.plotly_chart(charts.lead_time_histogram(predictions), use_container_width=True, config=theme.PLOTLY_CONFIG)
 
     gbm = metrics["models"]["lightgbm"]
     cols = st.columns(3)
@@ -109,11 +109,11 @@ def render_failures(predictions: pd.DataFrame) -> None:
             left, right = st.columns(2)
             left.plotly_chart(
                 charts.prediction_history(history, int(row["cycle"])),
-                use_container_width=True, key=f"fail_pred_{unit}",
+                use_container_width=True, config=theme.PLOTLY_CONFIG, key=f"fail_pred_{unit}",
             )
             right.plotly_chart(
                 charts.sensor_trend(history, data.sensor_of(row["driver1"]), int(row["cycle"])),
-                use_container_width=True, key=f"fail_sensor_{unit}",
+                use_container_width=True, config=theme.PLOTLY_CONFIG, key=f"fail_sensor_{unit}",
             )
 
 

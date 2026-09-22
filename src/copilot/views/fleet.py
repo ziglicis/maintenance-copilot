@@ -49,7 +49,7 @@ def body(predictions: pd.DataFrame) -> None:
         .map(lambda t: f"color: {theme.TIER_COLOURS[t]}; font-weight: 600", subset=["tier"]),
         height=420,
     )
-    right.plotly_chart(charts.rul_histogram(snapshot), use_container_width=True)
+    right.plotly_chart(charts.rul_histogram(snapshot), use_container_width=True, config=theme.PLOTLY_CONFIG)
     st.caption(
         "Sorted by predicted remaining life, so the engines needing a decision are at the top. "
         "Open one on the Engine detail page."

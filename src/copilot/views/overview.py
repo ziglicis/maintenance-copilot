@@ -46,7 +46,7 @@ def body(metrics: dict, simulation: pd.DataFrame, assumptions: simulator.Assumpt
             edge [color="#898781" arrowsize=0.6];
             raw [label="C-MAPSS\\nsensor data"];
             feat [label="Feature pipeline"];
-            model [label="RUL models\\nRidge / LightGBM"];
+            model [label="RUL models\\nRidge / LightGBM / CNN"];
             pred [label="Predictions\\n+ intervals\\n+ attributions"];
             rank [label="Fleet risk ranking"];
             wo [label="Work order\\ngenerator"];

@@ -79,21 +79,21 @@ def assumption_form() -> simulator.Assumptions:
         st.caption("Every number behind the savings figure. Nothing is hidden in the arithmetic.")
         top = st.columns(4)
         cost_unscheduled = top[0].number_input(
-            "Unscheduled failure ($)", value=float(current.cost_unscheduled), step=50_000.0, key="cost_unscheduled"
+            "Unscheduled failure ($)", value=float(current.cost_unscheduled), step=50_000.0, key="cost_unscheduled", format="%.0f"
         )
         cost_scheduled = top[1].number_input(
-            "Scheduled maintenance ($)", value=float(current.cost_scheduled), step=10_000.0, key="cost_scheduled"
+            "Scheduled maintenance ($)", value=float(current.cost_scheduled), step=10_000.0, key="cost_scheduled", format="%.0f"
         )
         downtime_unscheduled = top[2].number_input(
-            "Downtime, unscheduled (days)", value=float(current.downtime_unscheduled), step=1.0, key="downtime_unscheduled"
+            "Downtime, unscheduled (days)", value=float(current.downtime_unscheduled), step=1.0, key="downtime_unscheduled", format="%.1f"
         )
         downtime_scheduled = top[3].number_input(
-            "Downtime, scheduled (days)", value=float(current.downtime_scheduled), step=1.0, key="downtime_scheduled"
+            "Downtime, scheduled (days)", value=float(current.downtime_scheduled), step=1.0, key="downtime_scheduled", format="%.1f"
         )
 
         bottom = st.columns(4)
         cost_per_wasted_cycle = bottom[0].number_input(
-            "Value of a wasted cycle ($)", value=float(current.cost_per_wasted_cycle), step=50.0, key="cost_per_wasted_cycle"
+            "Value of a wasted cycle ($)", value=float(current.cost_per_wasted_cycle), step=50.0, key="cost_per_wasted_cycle", format="%.0f"
         )
         fixed_interval = bottom[1].number_input(
             "Fixed interval (cycles)", value=int(current.fixed_interval), step=10, key="fixed_interval"

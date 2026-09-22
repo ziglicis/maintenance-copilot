@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from copilot import charts, shared, simulator
+from copilot import charts, shared, simulator, theme
 
 
 def body(simulation: pd.DataFrame) -> None:
@@ -30,8 +30,8 @@ def body(simulation: pd.DataFrame) -> None:
     )
 
     left, right = st.columns(2)
-    left.plotly_chart(charts.policy_chart(results), use_container_width=True)
-    right.plotly_chart(charts.sensitivity_chart(curve, assumptions.predictive_threshold), use_container_width=True)
+    left.plotly_chart(charts.policy_chart(results), use_container_width=True, config=theme.PLOTLY_CONFIG)
+    right.plotly_chart(charts.sensitivity_chart(curve, assumptions.predictive_threshold), use_container_width=True, config=theme.PLOTLY_CONFIG)
 
     st.dataframe(
         results.assign(

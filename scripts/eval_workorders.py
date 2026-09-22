@@ -165,7 +165,12 @@ def subsystem_agreement(frame: pd.DataFrame) -> float:
     """Share of engines where every repeat named the same subsystem.
 
     Engines seen only once are excluded: one observation cannot agree or disagree.
+    Calls made with a different prompt are excluded too. Mixing the ablation arms in
+    here would answer "does the model agree with itself with and without the manual",
+    which is a different question and reads as disagreement between models.
     """
+    if "arm" in frame:
+        frame = frame[frame["arm"] == "full"]
     repeated = [g for _, g in frame.groupby("unit") if len(g) > 1]
     if not repeated:
         return float("nan")

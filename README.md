@@ -8,6 +8,12 @@ The point is the end to end system, not the leaderboard: a number like "RUL = 42
 not actionable on a flight line, and an RMSE does not tell a programme manager whether
 to change how the fleet is maintained.
 
+![Engine detail](docs/screenshots/Engine.png)
+
+One engine, replayed cycle by cycle: the prediction converging on truth, the interval
+narrowing, the three features moving it, and each of their sensors against the band it
+held while healthy.
+
 ## Run it
 
 ```bash
@@ -44,6 +50,38 @@ Published deep learning results on FD001 sit around 11 to 14 RMSE. The CNN here 
 deliberately small and does not reach that, which makes the production choice easy:
 the tree model is more accurate, trains in under two seconds, carries its own
 uncertainty and attributions, and deploys as a text file.
+
+## Screens
+
+**Every number the model cited, checked against the source data.** The work order is
+generated from a fixed prediction the model may explain but not change, then eight rules
+run over it before it is shown.
+
+![Work order and its audit](docs/screenshots/Work_Order.png)
+
+**Triage.** Sorted by predicted remaining life, so the engines needing a decision are at
+the top. Ground truth is behind a toggle, off by default, because a planner would not
+have that column.
+
+![Fleet](docs/screenshots/Fleet.png)
+
+**The business case.** Every assumption is an input, and the sensitivity curve shows the
+cliff below a 15 cycle threshold, where the warning arrives inside the parts lead time
+and is useless.
+
+![Business case](docs/screenshots/Business.png)
+
+**Measured, not asserted.** Groundedness rate per model, which rule fails when one does,
+and whether the synthetic manual earns its place in the prompt.
+
+![Work order evaluation](docs/screenshots/Eval1.png)
+
+**Where it fails.** The five worst predictions, each with a hypothesis derived from that
+engine's own data rather than written by hand.
+
+![Failure analysis](docs/screenshots/Eval2.png)
+
+![Overview](docs/screenshots/Overview.png)
 
 ## How it works
 
@@ -83,16 +121,17 @@ trend directions match, healthy ranges match the baseline, every sensor named in
 prose is backed by verified evidence, task codes and parts exist in the manual, and the
 engine id and prediction are unchanged.
 
-Measured over 24 calls across 6 engines and 2 models:
+Measured over 43 calls on the current prompt, across 6 engines and 2 models:
 
 | Model | Groundedness | Self-agreement | Latency | Cost |
 |---|---|---|---|---|
-| Opus 5, medium effort | 100% | 100% | 14.0 s | $0.037 |
-| Haiku 4.5 | 75% | 100% | 8.7 s | $0.007 |
+| Opus 5, medium effort | 100% | 100% | 14.2 s | $0.042 |
+| Haiku 4.5 | 67% | 83% | 8.9 s | $0.008 |
 
-Every Haiku failure was the same rule, naming a sensor in the justification that it had
-not listed in evidence. Both models were self-consistent across repeats, but they
-disagreed with each other on 1 of 6 engines.
+Every failure was the same rule, naming a sensor in the justification that was not
+listed in evidence. The two models agree on which subsystem to open for 4 of 6 engines,
+so passing every rule does not mean two models would send a technician to the same
+module.
 
 ### Policy simulator
 
