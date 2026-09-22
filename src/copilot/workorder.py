@@ -9,6 +9,7 @@ order is shown.
 
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -39,7 +40,9 @@ class Interval(BaseModel):
 class Evidence(BaseModel):
     sensor: str = Field(description="Sensor id exactly as given, for example 's11'")
     value: float = Field(description="Current reading, copied verbatim from the supplied table")
-    trend: Literal["rising", "falling", "stable"]
+    trend: Literal["rising", "falling", "stable"] = Field(
+        description="Copy the trend column from the readings table. It is computed, not judged."
+    )
     reference_range: str = Field(description="Healthy range for this sensor, from the fleet baseline given")
 
 
@@ -51,7 +54,7 @@ class WorkOrder(BaseModel):
     predicted_rul: int
     interval: Interval
     suspected_subsystem: Literal["Fan", "HPC", "HPT", "LPT", "Combustor", "Unknown"]
-    evidence: list[Evidence] = Field(min_length=1, max_length=6)
+    evidence: list[Evidence] = Field(min_length=1, max_length=8)
     recommended_actions: list[str] = Field(min_length=1, max_length=6)
     parts_to_stage: list[str] = Field(max_length=6)
     justification: str
@@ -63,14 +66,22 @@ class Generated:
     """A work order plus everything needed to audit and price the call."""
 
     work_order: WorkOrder
-    grounded: bool
-    failures: list[str]
+    checks: list["Check"]
     latency_s: float
     input_tokens: int
     output_tokens: int
     cache_read_tokens: int
     cost_usd: float
     model: str
+    effort: str | None
+
+    @property
+    def grounded(self) -> bool:
+        return all(c.passed for c in self.checks)
+
+    @property
+    def failures(self) -> list[str]:
+        return [f for c in self.checks for f in c.failures]
 
 
 def maintenance_history(engine_id: int, current_cycle: int, entries: int | None = None) -> list[str]:
@@ -99,13 +110,15 @@ def maintenance_history(engine_id: int, current_cycle: int, entries: int | None 
 
 def _sensor_table(row: pd.Series, sensors: list[str], history: pd.DataFrame) -> str:
     """Current reading, recent movement and a fleet baseline for each sensor."""
-    lines = ["| sensor | description | current | mean over last 20 cycles | fleet healthy range |",
-             "|---|---|---|---|---|"]
+    lines = ["| sensor | description | current | mean over last 20 cycles | trend | healthy range |",
+             "|---|---|---|---|---|---|"]
     for s in sensors:
-        recent = history[s].tail(20)
-        baseline = f"{history[s].iloc[:20].min():.4f} to {history[s].iloc[:20].max():.4f}"
+        recent = history[s].tail(config.TREND_WINDOW)
+        low, high = healthy_range(history, s)
+        trend = observed_trend(history, s, int(row["cycle"]))
         lines.append(
-            f"| {s} | {data.SENSOR_DESCRIPTIONS[s]} | {row[s]:.4f} | {recent.mean():.4f} | {baseline} |"
+            f"| {s} | {data.SENSOR_DESCRIPTIONS[s]} | {row[s]:.4f} | {recent.mean():.4f} | "
+            f"{trend} | {low:.4f} to {high:.4f} |"
         )
     return "\n".join(lines)
 
@@ -139,26 +152,135 @@ Maintenance history (synthetic):
 Write the work order."""
 
 
-def check_grounded(order: WorkOrder, row: pd.Series) -> list[str]:
-    """Verify every cited sensor value against the data.
+SENSOR_MENTION = re.compile(r"\bs(\d{1,2})\b")
+NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
 
-    Returns a list of problems, empty when the work order is fully grounded. The check
-    is deliberately strict: a plausible but wrong number is the failure mode that makes
-    a system like this untrustworthy, so a near miss is still a miss.
+
+@dataclass(frozen=True)
+class Check:
+    """One groundedness rule and what it found. Named so the UI can show the reasoning."""
+
+    name: str
+    passed: bool
+    detail: str
+    failures: tuple[str, ...] = ()
+
+
+def observed_trend(history: pd.DataFrame, sensor: str, cycle: int) -> str:
+    """Which way a sensor is moving over the trend window, from the data alone.
+
+    The test is whether the shift between the start and end of the window is larger
+    than the uncertainty in those two five-point averages. Comparing the shift against
+    the sensor's own sampling noise is what makes one threshold work for a temperature
+    in the hundreds and a bypass ratio near eight; an absolute epsilon, or the width of
+    the healthy band, would mean something different for each.
     """
-    failures = []
+    seg = history.loc[history["cycle"] <= cycle, sensor].tail(config.TREND_WINDOW)
+    if len(seg) < 10:
+        return "stable"
+    head, tail = seg.head(5), seg.tail(5)
+    delta = float(tail.mean() - head.mean())
+    noise = float(seg.std(ddof=1)) / len(head) ** 0.5
+    if noise <= 0 or abs(delta) < config.TREND_SIGMA * noise:
+        return "stable"
+    return "rising" if delta > 0 else "falling"
+
+
+def healthy_range(history: pd.DataFrame, sensor: str) -> tuple[float, float]:
+    """The baseline handed to the model: this engine's own first 20 cycles."""
+    healthy = history[sensor].iloc[:20]
+    return float(healthy.min()), float(healthy.max())
+
+
+def evidence_audit(order: WorkOrder, row: pd.Series, history: pd.DataFrame) -> pd.DataFrame:
+    """Every claim in evidence next to what the data says, one row per sensor."""
+    records = []
     for item in order.evidence:
-        if item.sensor not in row.index:
-            failures.append(f"{item.sensor} is not a sensor in this dataset")
-            continue
-        actual = float(row[item.sensor])
-        if abs(item.value - actual) > config.SENSOR_TOLERANCE:
-            failures.append(f"{item.sensor} cited as {item.value} but the reading is {actual:.4f}")
-    if order.engine_id != int(row["unit"]):
-        failures.append(f"engine id cited as {order.engine_id} but this is engine {int(row['unit'])}")
-    if order.predicted_rul != int(round(row["point"])):
-        failures.append(f"RUL cited as {order.predicted_rul} but the model predicted {int(round(row['point']))}")
-    return failures
+        known = item.sensor in row.index
+        actual = float(row[item.sensor]) if known else float("nan")
+        trend = observed_trend(history, item.sensor, int(row["cycle"])) if known else "unknown"
+        low, high = healthy_range(history, item.sensor) if known else (float("nan"), float("nan"))
+        cited = [float(n) for n in NUMBER.findall(item.reference_range)]
+        range_ok = (
+            len(cited) == 2
+            and abs(cited[0] - low) <= config.RANGE_TOLERANCE
+            and abs(cited[1] - high) <= config.RANGE_TOLERANCE
+        )
+        records.append({
+            "sensor": item.sensor,
+            "cited value": item.value,
+            "actual": actual,
+            "delta": item.value - actual if known else float("nan"),
+            "value ok": known and abs(item.value - actual) <= config.SENSOR_TOLERANCE,
+            "cited trend": item.trend,
+            "observed trend": trend,
+            "trend ok": item.trend == trend,
+            "cited range": item.reference_range,
+            "actual range": f"{low:.4f} to {high:.4f}" if known else "n/a",
+            "range ok": range_ok,
+        })
+    return pd.DataFrame(records)
+
+
+def check_grounded(order: WorkOrder, row: pd.Series, history: pd.DataFrame) -> list[Check]:
+    """Every rule that decides whether a work order can be trusted, with its result.
+
+    Returns one Check per rule rather than a flat list of strings, so the app can show
+    what was verified instead of a bare pass or fail. A badge nobody can interrogate is
+    not evidence of anything.
+    """
+    audit = evidence_audit(order, row, history)
+    n = len(audit)
+
+    unknown = [s for s in audit.loc[~audit["sensor"].isin(row.index), "sensor"]] if n else []
+    values = audit[audit["sensor"].isin(row.index)] if n else audit
+
+    value_failures = tuple(
+        f"{r.sensor} cited as {r['cited value']} but the reading is {r.actual:.4f}"
+        for _, r in values.iterrows() if not r["value ok"]
+    )
+    trend_failures = tuple(
+        f"{r.sensor} called {r['cited trend']} but the data is {r['observed trend']}"
+        for _, r in values.iterrows() if not r["trend ok"]
+    )
+    range_failures = tuple(
+        f"{r.sensor} healthy range cited as {r['cited range']}, actual {r['actual range']}"
+        for _, r in values.iterrows() if not r["range ok"]
+    )
+
+    cited_sensors = set(audit["sensor"]) if n else set()
+    prose = f"{order.justification} {order.confidence_note}"
+    mentioned = {f"s{m}" for m in SENSOR_MENTION.findall(prose)}
+    orphans = tuple(
+        f"{s} is discussed in the justification but has no verified value in evidence"
+        for s in sorted(mentioned - cited_sensors, key=lambda x: int(x[1:]))
+    )
+
+    id_ok = order.engine_id == int(row["unit"])
+    rul_ok = order.predicted_rul == int(round(row["point"]))
+
+    return [
+        Check("Sensors exist in the dataset", not unknown,
+              f"{n - len(unknown)} of {n} recognised",
+              tuple(f"{s} is not a sensor in this dataset" for s in unknown)),
+        Check("Cited values match the data", not value_failures,
+              f"{len(values) - len(value_failures)} of {len(values)} within \u00b1{config.SENSOR_TOLERANCE}",
+              value_failures),
+        Check("Trend directions match the data", not trend_failures,
+              f"{len(values) - len(trend_failures)} of {len(values)} agree over {config.TREND_WINDOW} cycles",
+              trend_failures),
+        Check("Healthy ranges match the baseline", not range_failures,
+              f"{len(values) - len(range_failures)} of {len(values)} match", range_failures),
+        Check("Prose is backed by evidence", not orphans,
+              f"{len(mentioned)} sensors named in prose, {len(mentioned) - len(orphans)} verified",
+              orphans),
+        Check("Engine id unchanged", id_ok,
+              f"engine {order.engine_id}",
+              () if id_ok else (f"cited {order.engine_id}, actual {int(row['unit'])}",)),
+        Check("Prediction unchanged", rul_ok,
+              f"{order.predicted_rul} cycles",
+              () if rul_ok else (f"cited {order.predicted_rul}, model said {int(round(row['point']))}",)),
+    ]
 
 
 def price(model: str, usage) -> float:
@@ -176,10 +298,19 @@ def price(model: str, usage) -> float:
     ) / 1_000_000
 
 
-def generate(row: pd.Series, sensors: list[str], history: pd.DataFrame, model: str | None = None) -> Generated:
+def generate(
+    row: pd.Series,
+    sensors: list[str],
+    history: pd.DataFrame,
+    model: str | None = None,
+    effort: str | None = None,
+) -> Generated:
     """Call the model, validate the result and record what it cost."""
     model = model or config.LLM_MODEL
+    effort = effort or config.LLM_EFFORT
     client = anthropic.Anthropic()
+    # Models that do not support effort reject the parameter outright.
+    extra = {"output_config": {"effort": effort}} if model in config.LLM_EFFORT_MODELS else {}
 
     start = time.perf_counter()
     response = client.messages.parse(
@@ -189,6 +320,7 @@ def generate(row: pd.Series, sensors: list[str], history: pd.DataFrame, model: s
         system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": build_prompt(row, sensors, history)}],
         output_format=WorkOrder,
+        **extra,
     )
     latency = time.perf_counter() - start
 
@@ -196,22 +328,22 @@ def generate(row: pd.Series, sensors: list[str], history: pd.DataFrame, model: s
     if order is None:
         raise RuntimeError(f"model returned no parsed work order, stop reason {response.stop_reason}")
 
-    failures = check_grounded(order, row)
     generated = Generated(
         work_order=order,
-        grounded=not failures,
-        failures=failures,
+        checks=check_grounded(order, row, history),
         latency_s=latency,
         input_tokens=response.usage.input_tokens,
         output_tokens=response.usage.output_tokens,
         cache_read_tokens=getattr(response.usage, "cache_read_input_tokens", 0) or 0,
         cost_usd=price(model, response.usage),
         model=model,
+        effort=effort if extra else None,
     )
     telemetry.record(
         engine_id=int(row["unit"]),
         cycle=int(row["cycle"]),
         model=model,
+        effort=generated.effort,
         latency_s=latency,
         input_tokens=generated.input_tokens,
         output_tokens=generated.output_tokens,
