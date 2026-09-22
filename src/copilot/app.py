@@ -25,7 +25,7 @@ def main() -> None:
     predictions = shared.load_predictions()
     simulation = shared.load_simulation()
     metrics = shared.load_metrics()
-    llm_model = shared.model_picker()
+    llm_model, llm_effort = shared.model_picker()
 
     st.navigation(
         {
@@ -46,7 +46,7 @@ def main() -> None:
                     url_path="fleet",
                 ),
                 st.Page(
-                    lambda: engine.body(predictions, metrics, llm_model),
+                    lambda: engine.body(predictions, metrics, llm_model, llm_effort),
                     title="Engine detail",
                     icon=":material/precision_manufacturing:",
                     url_path="engine",
@@ -66,7 +66,7 @@ def main() -> None:
                     url_path="evaluation",
                 ),
                 st.Page(
-                    lambda: operations.body(metrics, llm_model),
+                    lambda: operations.body(predictions, metrics, llm_model, llm_effort),
                     title="Operations",
                     icon=":material/speed:",
                     url_path="operations",

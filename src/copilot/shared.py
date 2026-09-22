@@ -121,7 +121,19 @@ def assumption_form() -> simulator.Assumptions:
 
 
 
-def model_picker() -> str:
-    """Which model writes the work orders. Lives in the sidebar so every page agrees."""
+def model_picker() -> tuple[str, str]:
+    """Which model writes the work orders, and how hard it thinks.
+
+    Both live in the sidebar so every page agrees, and both are recorded per call, so
+    the Operations tab shows a real latency and cost comparison rather than a claim.
+    """
     st.sidebar.header("Work order generator")
-    return st.sidebar.selectbox("Model", options=list(config.LLM_MODELS), index=0, key="llm_model")
+    model = st.sidebar.selectbox("Model", options=list(config.LLM_MODELS), index=0, key="llm_model")
+    effort = st.sidebar.selectbox(
+        "Effort",
+        options=list(config.LLM_EFFORTS),
+        index=list(config.LLM_EFFORTS).index(config.LLM_EFFORT),
+        key="llm_effort",
+        help="Thinking depth. Ignored by models that do not support it, such as Haiku.",
+    )
+    return model, effort

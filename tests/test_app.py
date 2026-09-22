@@ -18,14 +18,15 @@ def _render_view(name: str) -> None:
     simulation = shared.load_simulation()
     metrics = shared.load_metrics()
     model = config.LLM_MODEL
+    effort = config.LLM_EFFORT
 
     {
         "overview": lambda: overview.body(metrics, simulation, simulator.Assumptions()),
         "fleet": lambda: fleet.body(predictions),
-        "engine": lambda: engine.body(predictions, metrics, model),
+        "engine": lambda: engine.body(predictions, metrics, model, effort),
         "business_case": lambda: business_case.body(simulation),
         "evaluation": lambda: evaluation.body(predictions, metrics),
-        "operations": lambda: operations.body(metrics, model),
+        "operations": lambda: operations.body(predictions, metrics, model, effort),
     }[name]()
 
 

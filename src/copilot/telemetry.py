@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS work_orders (
     engine_id INTEGER NOT NULL,
     cycle INTEGER NOT NULL,
     model TEXT NOT NULL,
+    effort TEXT,
     latency_s REAL NOT NULL,
     input_tokens INTEGER NOT NULL,
     output_tokens INTEGER NOT NULL,
@@ -38,6 +39,11 @@ def connect() -> sqlite3.Connection:
     config.ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(config.TELEMETRY_DB)
     conn.execute(SCHEMA)
+    # Databases written before effort was recorded are still readable, and rows from
+    # then keep a null effort rather than being thrown away.
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(work_orders)")}
+    if "effort" not in columns:
+        conn.execute("ALTER TABLE work_orders ADD COLUMN effort TEXT")
     return conn
 
 
@@ -45,6 +51,7 @@ def record(
     engine_id: int,
     cycle: int,
     model: str,
+    effort: str | None,
     latency_s: float,
     input_tokens: int,
     output_tokens: int,
@@ -56,14 +63,15 @@ def record(
 ) -> None:
     with connect() as conn:
         conn.execute(
-            "INSERT INTO work_orders (created_at, engine_id, cycle, model, latency_s, input_tokens,"
-            " output_tokens, cache_read_tokens, cost_usd, grounded, failures, payload)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO work_orders (created_at, engine_id, cycle, model, effort, latency_s,"
+            " input_tokens, output_tokens, cache_read_tokens, cost_usd, grounded, failures, payload)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 engine_id,
                 cycle,
                 model,
+                effort,
                 latency_s,
                 input_tokens,
                 output_tokens,
@@ -82,8 +90,9 @@ def read_all() -> pd.DataFrame:
 
 
 def summary_by_model(frame: pd.DataFrame) -> pd.DataFrame:
-    """Latency, cost and groundedness per model, which is the model comparison."""
-    return frame.groupby("model").agg(
+    """Latency, cost and groundedness per model and effort, which is the comparison."""
+    frame = frame.assign(effort=frame["effort"].fillna("n/a"))
+    return frame.groupby(["model", "effort"]).agg(
         calls=("id", "count"),
         p50_latency=("latency_s", lambda s: s.quantile(0.5)),
         p95_latency=("latency_s", lambda s: s.quantile(0.95)),

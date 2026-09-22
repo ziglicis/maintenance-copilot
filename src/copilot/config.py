@@ -58,8 +58,15 @@ LLM_PRICING = {  # USD per million tokens, (input, output)
     "claude-sonnet-5": (2.0, 10.0),
     "claude-haiku-4-5": (1.0, 5.0),
 }
+LLM_EFFORT = "medium"  # thinking depth and overall token spend
+LLM_EFFORTS = ("low", "medium", "high")
+# Effort is rejected by models that do not support it, Haiku 4.5 among them.
+LLM_EFFORT_MODELS = frozenset({"claude-opus-5", "claude-sonnet-5"})
 LLM_MAX_TOKENS = 4000
 SENSOR_TOLERANCE = 0.05  # groundedness check, absolute tolerance on cited sensor values
+RANGE_TOLERANCE = 0.1  # tolerance on a cited healthy range, which the prompt supplies at 4dp
+TREND_WINDOW = 20  # cycles used to decide whether a sensor is rising, falling or stable
+TREND_SIGMA = 2.0  # how many standard errors of movement count as a trend rather than noise
 LOG_ENTRIES_PER_ENGINE = 5
 
 # Fleet scale used for the projected monthly cost in the Operations tab.
