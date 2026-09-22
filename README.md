@@ -2,6 +2,10 @@
 
 Predicts remaining useful life for turbofan engines, turns each prediction into a maintenance work order that cites its evidence, and prices the resulting policy against the alternatives. "RUL = 42" is not actionable on a flight line, and an RMSE does not tell a programme manager whether to change how a fleet is maintained.
 
+The language model writes the work order but produces none of its numbers. The
+prediction, its interval and its attributions are deterministic input it may explain and not
+alter, and eight checks verify the result against source data before anything is shown.
+
 ![Engine detail](docs/screenshots/Engine.png)
 
 *One engine replayed cycle by cycle: the prediction converging on truth, the interval narrowing, and the features moving it.*
@@ -16,7 +20,7 @@ A 100 engine fleet, moving from a fixed 150 cycle schedule to condition-based pu
 | Fixed interval | $18.7M | 7 | 377 | 5,700 cycles |
 | **Predictive** | **$13.1M** | **0** | **300** | **2,756 cycles** |
 
-**$5.6M saved against the fixed schedule, a 30% reduction, every unscheduled failure removed and 77 fewer downtime days.** Annualised at 300 cycles per engine per year, that is $8.1M.
+**Every unscheduled failure removed, 77 fewer downtime days, and $5.6M saved against the fixed schedule, a 30% reduction.** Annualised at 300 cycles per engine per year, that is $8.1M.
 
 **All financials are assumptions and are UI inputs, not constants: $750k per unscheduled failure, $120k per scheduled pull, $400 per wasted cycle, 15 cycle parts lead time.**
 
@@ -115,6 +119,8 @@ claim made in prose reaches the reader without passing the value and trend check
 such failures were substantively wrong, including one that called a rising temperature
 stable and concluded the module was healthy.
 
+A 100% rate means the cited evidence is real, not that the diagnosis is right (this would require real manuals and domain professionals). On one engine both models passed all eight rules and named different subsystems, which is why agreement is reported next to groundedness rather than underneath it.
+
 **The manual earns its place, measured not assumed.** Removing it drops priority accuracy
 from 75% to 42% and specific subsystem attribution from 92% to 75%, and stops the model
 citing parts entirely, so nothing can be staged against a lead time.
@@ -143,9 +149,9 @@ airworthiness judgement. The system recommends, people decide.
 
 ## Limitations
 
-- **Groundedness is not correctness.** Every rule can pass while the diagnosis is wrong:
-  two models both passed all eight rules on one engine and named different subsystems,
-  which is why agreement is reported beside the groundedness rate.
+- **Groundedness is not correctness.** The checks verify that cited evidence is real,
+  not that the conclusion drawn from it is sound. Nothing in the system scores the
+  diagnosis.
 - **Quality is measured automatically only.** No human rubric, no LLM judge, so nothing
   scores whether an action is the right action. This is a certain next step done with a domain professional.
 - **Sensor descriptions in prose are unverified.** Paraphrase detection was tried and
