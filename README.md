@@ -155,9 +155,21 @@ Anything that can change a reported number lives in the package and is under tes
 - Interval coverage is 77% against a nominal 80%. The gap is structural: validation
   labels are capped at 125 cycles while several test engines truly have more life than
   that, so those can never be covered.
+- The synthetic manual earns its place, measured rather than assumed. Removing it from
+  the system prompt drops priority accuracy from 75% to 42%, since the priority
+  thresholds live in it, and drops specific subsystem attribution from 92% to 75%. It
+  also stops the model citing parts at all, so nothing can be staged against a lead
+  time. Groundedness rises without it, because a thinner prompt produces terser prose
+  with fewer unverified sensor mentions.
 - There is no human rating rubric or LLM judge yet. Work order quality is measured
   automatically only, by `scripts/eval_workorders.py`.
 - Groundedness is not correctness. Every rule can pass while the diagnosis is still
   wrong: on one engine, two models both passed all eight rules and named different
   subsystems. The agreement figure is reported beside the groundedness rate for exactly
   that reason.
+- Sensor descriptions in prose are not verified, so a work order can attach the wrong
+  name to a real sensor. Paraphrase detection was tried and rejected: matching the
+  model's wording against the canonical descriptions flagged 8 of 45 constructions with
+  only 1 real error, and tightening the phrase boundary to clear the false positives
+  removed the true positive with them. Requiring the exact supplied name would work, at
+  the cost of stiffer prose, and was judged not worth it for one error in 45.

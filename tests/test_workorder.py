@@ -93,7 +93,7 @@ def test_telemetry_round_trips_a_call(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "TELEMETRY_DB", tmp_path / "telemetry.db")
     monkeypatch.setattr(config, "ARTIFACT_DIR", tmp_path)
     telemetry.record(
-        engine_id=7, cycle=133, model="claude-opus-5", effort="medium", latency_s=4.2, input_tokens=2000,
+        engine_id=7, cycle=133, model="claude-opus-5", effort="medium", prompt_variant="full", latency_s=4.2, input_tokens=2000,
         output_tokens=400, cache_read_tokens=1800, cost_usd=0.02, grounded=False,
         failures=["s11 cited as 52.9 but the reading is 47.7000"], payload="{}",
     )

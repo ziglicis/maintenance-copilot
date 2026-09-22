@@ -39,6 +39,8 @@ def main() -> None:
     parser.add_argument("--repeats", type=int, default=2, help="runs per engine, to measure agreement")
     parser.add_argument("--models", nargs="+", default=["claude-opus-5", "claude-haiku-4-5"])
     parser.add_argument("--effort", default=config.LLM_EFFORT)
+    parser.add_argument("--ablate-manual", action="store_true",
+                        help="run every call twice, with and without the manual in the system prompt")
     args = parser.parse_args()
 
     predictions = pd.read_parquet(config.PREDICTIONS)
@@ -48,7 +50,9 @@ def main() -> None:
 
     # Rough per-call costs measured on this prompt, only to set expectations.
     rough = {"claude-opus-5": 0.06, "claude-sonnet-5": 0.025, "claude-haiku-4-5": 0.008}
-    estimate = sum(rough.get(m, 0.06) for m in args.models) * len(engines) * args.repeats
+    arms = [True, False] if args.ablate_manual else [True]
+    calls *= len(arms)
+    estimate = sum(rough.get(m, 0.06) for m in args.models) * len(engines) * args.repeats * len(arms)
     print(f"{calls} calls over engines {engines}, estimated ${estimate:.2f}")
 
     records = []
@@ -58,17 +62,27 @@ def main() -> None:
             history = predictions[predictions["unit"] == unit].reset_index(drop=True)
             row = history.iloc[-1]
             for attempt in range(args.repeats):
+              for manual in arms:
+                arm = "full" if manual else "no-manual"
                 try:
-                    generated = workorder.generate(row, sensors, history, model=model, effort=args.effort)
+                    generated = workorder.generate(row, sensors, history, model=model,
+                                                   effort=args.effort, include_manual=manual)
                 except Exception as error:  # a failed call is a result, not a reason to stop
-                    print(f"  {model} engine {unit} run {attempt}: {type(error).__name__}")
-                    records.append({"model": model, "unit": unit, "error": type(error).__name__})
+                    print(f"  {model} {arm} engine {unit} run {attempt}: {type(error).__name__}")
+                    records.append({"model": model, "unit": unit, "arm": arm,
+                                    "error": type(error).__name__})
                     continue
                 order = generated.work_order
                 records.append({
                     "model": model,
                     "unit": unit,
+                    "arm": arm,
                     "tier": row["tier"],
+                    "priority_ok": order.priority == expected_priority(row),
+                    "codes_ok": all(
+                        c.passed for c in generated.checks
+                        if c.name == "Task codes and parts exist in the manual"
+                    ),
                     "grounded": generated.grounded,
                     "failed_rules": [c.name for c in generated.checks if not c.passed],
                     "subsystem": order.suspected_subsystem,
@@ -77,11 +91,24 @@ def main() -> None:
                     "latency_s": generated.latency_s,
                     "cost_usd": generated.cost_usd,
                 })
-                print(f"  {model} engine {unit} run {attempt}: "
+                print(f"  {model} {arm:9s} engine {unit} run {attempt}: "
                       f"{'pass' if generated.grounded else 'FAIL'} {order.suspected_subsystem}")
 
     frame = pd.DataFrame(records)
     report = summarise(frame)
+    if args.ablate_manual:
+        report["ablation"] = {
+            arm: {
+                "calls": len(g),
+                "groundedness_rate": round(float(g["grounded"].mean()), 3),
+                "task_codes_valid": round(float(g["codes_ok"].mean()), 3),
+                "priority_matches_manual": round(float(g["priority_ok"].mean()), 3),
+                "named_a_subsystem": round(float((g["subsystem"] != "Unknown").mean()), 3),
+                "mean_cost_usd": round(float(g["cost_usd"].mean()), 4),
+            }
+            for arm, g in frame[frame.get("grounded").notna()].groupby("arm")
+        }
+        (config.ARTIFACT_DIR / "manual_ablation.json").write_text(json.dumps(report["ablation"], indent=2))
     report["wall_seconds"] = round(time.perf_counter() - start, 1)
     report["spend_usd"] = round(float(frame.get("cost_usd", pd.Series(dtype=float)).sum()), 4)
     (config.ARTIFACT_DIR / "workorder_eval.json").write_text(json.dumps(report, indent=2))
@@ -89,6 +116,21 @@ def main() -> None:
     print(f"\nspent ${report['spend_usd']:.2f} in {report['wall_seconds']:.0f}s")
     print(json.dumps({k: v for k, v in report.items() if k != "per_model"}, indent=2))
     print(pd.DataFrame(report["per_model"]).T.to_string())
+    if "ablation" in report:
+        print("\nMANUAL ABLATION")
+        print(pd.DataFrame(report["ablation"]).T.to_string())
+
+
+def expected_priority(row: pd.Series) -> str:
+    """The priority the manual's own table dictates, so the model can be scored on it."""
+    rul, lower = row["point"], row["lower"]
+    if rul < 15 or lower < 10:
+        return "Immediate"
+    if rul <= config.TIER_RED:
+        return "Urgent"
+    if rul <= config.TIER_AMBER:
+        return "Routine"
+    return "Monitor"
 
 
 def summarise(frame: pd.DataFrame) -> dict:

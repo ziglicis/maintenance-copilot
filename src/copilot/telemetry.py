@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS work_orders (
     cycle INTEGER NOT NULL,
     model TEXT NOT NULL,
     effort TEXT,
+    prompt_variant TEXT,
     latency_s REAL NOT NULL,
     input_tokens INTEGER NOT NULL,
     output_tokens INTEGER NOT NULL,
@@ -42,8 +43,9 @@ def connect() -> sqlite3.Connection:
     # Databases written before effort was recorded are still readable, and rows from
     # then keep a null effort rather than being thrown away.
     columns = {row[1] for row in conn.execute("PRAGMA table_info(work_orders)")}
-    if "effort" not in columns:
-        conn.execute("ALTER TABLE work_orders ADD COLUMN effort TEXT")
+    for column in ("effort", "prompt_variant"):
+        if column not in columns:
+            conn.execute(f"ALTER TABLE work_orders ADD COLUMN {column} TEXT")
     return conn
 
 
@@ -52,6 +54,7 @@ def record(
     cycle: int,
     model: str,
     effort: str | None,
+    prompt_variant: str,
     latency_s: float,
     input_tokens: int,
     output_tokens: int,
@@ -63,15 +66,16 @@ def record(
 ) -> None:
     with connect() as conn:
         conn.execute(
-            "INSERT INTO work_orders (created_at, engine_id, cycle, model, effort, latency_s,"
-            " input_tokens, output_tokens, cache_read_tokens, cost_usd, grounded, failures, payload)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO work_orders (created_at, engine_id, cycle, model, effort, prompt_variant,"
+            " latency_s, input_tokens, output_tokens, cache_read_tokens, cost_usd, grounded,"
+            " failures, payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 engine_id,
                 cycle,
                 model,
                 effort,
+                prompt_variant,
                 latency_s,
                 input_tokens,
                 output_tokens,

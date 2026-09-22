@@ -37,8 +37,9 @@ def body(predictions: pd.DataFrame, metrics: dict, llm_model: str, llm_effort: s
     metric_cols[2].metric("Tier", f"{theme.TIER_MARK[row['tier']]} {row['tier']}")
     metric_cols[3].metric("True RUL", f"{row['true_rul']:.0f} cycles", help="Held-out label, shown for comparison")
 
-    st.plotly_chart(charts.prediction_history(history, cycle), use_container_width=True)
-    st.plotly_chart(charts.attribution_chart(row), use_container_width=True)
+    wide, narrow = st.columns([3, 2])
+    wide.plotly_chart(charts.prediction_history(history, cycle), use_container_width=True)
+    narrow.plotly_chart(charts.attribution_chart(row), use_container_width=True)
 
     driver_sensors = list(dict.fromkeys(data.sensor_of(row[f"driver{i}"]) for i in (1, 2, 3)))
     for col, sensor in zip(st.columns(len(driver_sensors)), driver_sensors):

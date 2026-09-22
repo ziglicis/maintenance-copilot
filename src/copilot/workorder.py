@@ -26,7 +26,13 @@ MANUAL = (_HERE / "manual.md").read_text()
 
 # The system prompt is a file, not a string constant: prompts change more often than the
 # code around them and a separate file keeps those changes reviewable on their own.
-SYSTEM_PROMPT = (_HERE / "prompt.md").read_text() + "\n\n" + MANUAL
+INSTRUCTIONS = (_HERE / "prompt.md").read_text()
+SYSTEM_PROMPT = INSTRUCTIONS + "\n\n" + MANUAL
+
+
+def system_prompt(include_manual: bool = True) -> str:
+    """The manual is separable so its contribution can be measured rather than assumed."""
+    return SYSTEM_PROMPT if include_manual else INSTRUCTIONS
 
 CACHE_WRITE_MULTIPLIER = 1.25
 CACHE_READ_MULTIPLIER = 0.1
@@ -74,6 +80,7 @@ class Generated:
     cost_usd: float
     model: str
     effort: str | None
+    prompt_variant: str
 
     @property
     def grounded(self) -> bool:
@@ -320,6 +327,7 @@ def generate(
     history: pd.DataFrame,
     model: str | None = None,
     effort: str | None = None,
+    include_manual: bool = True,
 ) -> Generated:
     """Call the model, validate the result and record what it cost."""
     model = model or config.LLM_MODEL
@@ -333,7 +341,8 @@ def generate(
         model=model,
         max_tokens=config.LLM_MAX_TOKENS,
         # The system prompt carries the manual and never changes, so it caches well.
-        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+        system=[{"type": "text", "text": system_prompt(include_manual),
+                 "cache_control": {"type": "ephemeral"}}],
         messages=[{"role": "user", "content": build_prompt(row, sensors, history)}],
         output_format=WorkOrder,
         **extra,
@@ -354,12 +363,14 @@ def generate(
         cost_usd=price(model, response.usage),
         model=model,
         effort=effort if extra else None,
+        prompt_variant="full" if include_manual else "no-manual",
     )
     telemetry.record(
         engine_id=int(row["unit"]),
         cycle=int(row["cycle"]),
         model=model,
         effort=generated.effort,
+        prompt_variant=generated.prompt_variant,
         latency_s=latency,
         input_tokens=generated.input_tokens,
         output_tokens=generated.output_tokens,

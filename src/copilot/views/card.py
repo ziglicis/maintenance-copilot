@@ -44,10 +44,13 @@ def render_checks(checks: list[workorder.Check]) -> None:
 def render_audit(order: workorder.WorkOrder, row: pd.Series, history: pd.DataFrame) -> None:
     """Every claim in evidence beside what the data says."""
     audit = workorder.evidence_audit(order, row, history)
+    flags = ["value ok", "trend ok", "range ok"]
+    audit[flags] = audit[flags].map(lambda ok: PASS if ok else FAIL)
     st.dataframe(
         audit.style.format({"cited value": "{:.4f}", "actual": "{:.4f}", "delta": "{:+.4f}"}).map(
-            lambda v: f"color: {theme.TIER_COLOURS['Green'] if v else theme.TIER_COLOURS['Red']}; font-weight: 600",
-            subset=["value ok", "trend ok", "range ok"],
+            lambda v: f"color: {theme.TIER_COLOURS['Green'] if v == PASS else theme.TIER_COLOURS['Red']};"
+                      " font-weight: 600",
+            subset=flags,
         ),
         hide_index=True,
         use_container_width=True,
