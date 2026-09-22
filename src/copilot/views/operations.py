@@ -23,7 +23,13 @@ def body(metrics: dict, llm_model: str) -> None:
         st.info("No work orders generated yet. Generate one in the Live demo tab to populate this tab.")
         return
 
-    st.dataframe(telemetry.summary_by_model(calls).round(4))
+    st.dataframe(
+        telemetry.summary_by_model(calls).style.format({
+            "calls": "{:.0f}", "p50_latency": "{:.1f} s", "p95_latency": "{:.1f} s",
+            "mean_cost": "${:.4f}", "input_tokens": "{:,.0f}", "output_tokens": "{:,.0f}",
+            "cache_reads": "{:,.0f}", "grounded": "{:.0%}",
+        })
+    )
 
     current = calls[calls["model"] == llm_model]
     mean_cost = current["cost_usd"].mean() if not current.empty else calls["cost_usd"].mean()
@@ -40,7 +46,7 @@ def body(metrics: dict, llm_model: str) -> None:
     st.dataframe(
         calls[["created_at", "engine_id", "cycle", "model", "latency_s", "cost_usd", "grounded", "failures"]]
         .head(20)
-        .round(3),
+        .style.format({"latency_s": "{:.1f} s", "cost_usd": "${:.4f}", "grounded": "{:.0f}"}),
         hide_index=True,
     )
 

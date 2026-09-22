@@ -17,7 +17,10 @@ def body(predictions: pd.DataFrame, metrics: dict) -> None:
             "val_rmse": "validation RMSE", "test_rmse": "test RMSE", "test_nasa_score": "NASA score",
             "train_seconds": "train (s)", "fleet_inference_seconds": "fleet inference (s)",
         })
-        .round(3)
+        .style.format({
+            "validation RMSE": "{:.2f}", "test RMSE": "{:.2f}", "NASA score": "{:.0f}",
+            "train (s)": "{:.2f}", "fleet inference (s)": "{:.3f}",
+        })
     )
     st.caption(
         f"Production model chosen on the validation split: **{metrics['production_model']}**. The test set "
@@ -44,7 +47,10 @@ def body(predictions: pd.DataFrame, metrics: dict) -> None:
     st.dataframe(
         worst[["cycle", "true_rul", "point", "lower", "upper", "error", "driver1", "tier"]]
         .rename(columns={"point": "predicted", "true_rul": "true RUL", "driver1": "top driver"})
-        .round(1)
+        .style.format({
+            "cycle": "{:.0f}", "true RUL": "{:.0f}", "predicted": "{:.1f}",
+            "lower": "{:.0f}", "upper": "{:.0f}", "error": "{:.1f}",
+        })
     )
     st.caption(
         "The large errors cluster on engines whose sensors are still near baseline at the truncation "
