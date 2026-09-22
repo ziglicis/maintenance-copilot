@@ -31,13 +31,26 @@ TIER_MARK = {"Red": "●", "Amber": "●", "Green": "●"}
 
 def style(fig: go.Figure, height: int = 320, legend: bool = False) -> go.Figure:
     """Recessive chrome, readable ink, no chartjunk."""
+    # Title and legend both live in the top margin, so the margin has to be tall enough
+    # for both or they overlap. The title is pinned to the top of the figure itself
+    # (yref container) and the legend sits just above the plot area, below it.
+    top_margin = 68 if legend else 34
     fig.update_layout(
         height=height,
-        margin=dict(l=8, r=8, t=28, b=8),
+        margin=dict(l=8, r=8, t=top_margin, b=8),
         paper_bgcolor=SURFACE,
         plot_bgcolor=SURFACE,
         font=dict(color=INK_SECONDARY, size=12),
-        title_font=dict(color=INK, size=14),
+        title=dict(
+            font=dict(color=INK, size=14),
+            x=0,
+            xanchor="left",
+            xref="container",
+            y=1,
+            yanchor="top",
+            yref="container",
+            pad=dict(t=8, l=8),
+        ),
         showlegend=legend,
         legend=dict(orientation="h", yanchor="bottom", y=1.0, x=0, font=dict(color=INK_SECONDARY)),
         hovermode="x unified",

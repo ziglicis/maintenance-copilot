@@ -92,6 +92,11 @@ def attribution_chart(row: pd.Series) -> go.Figure:
     )
     fig.update_layout(title="What moved this prediction (cycles)")
     fig.update_yaxes(autorange="reversed")
+    # Symmetric range around zero, with headroom so the outside value labels land
+    # inside the plot rather than on top of the axis labels. Symmetry is also the
+    # honest framing: it shows at a glance whether the drivers push life up or down.
+    span = max(abs(v) for v in values) or 1.0
+    fig.update_xaxes(range=[-span * 1.4, span * 1.4], zeroline=True, zerolinecolor=theme.GRID)
     return theme.style(fig, height=240)
 
 
@@ -107,7 +112,8 @@ def policy_chart(results: pd.DataFrame) -> go.Figure:
         )
     )
     fig.update_layout(title="Total cost over the simulated fleet")
-    fig.update_yaxes(title="dollars")
+    # Headroom for the outside value labels, which otherwise clip on the tallest bar.
+    fig.update_yaxes(title="dollars", range=[0, results["total_cost"].max() * 1.18])
     return theme.style(fig)
 
 
@@ -126,7 +132,11 @@ def sensitivity_chart(curve: pd.DataFrame, chosen: int) -> go.Figure:
     )
     fig.update_layout(title="Cost against pull threshold")
     fig.update_xaxes(title="pull when predicted lower bound drops below (cycles)")
-    fig.update_yaxes(title="dollars")
+    # Room above the curve for the annotation pointing at the cheapest threshold.
+    fig.update_yaxes(
+        title="dollars",
+        range=[curve["total_cost"].min() * 0.92, curve["total_cost"].max() * 1.12],
+    )
     return theme.style(fig)
 
 
