@@ -1,14 +1,10 @@
 # Predictive maintenance copilot
 
-Predicts remaining useful life for turbofan engines, turns each prediction into a
-maintenance work order that cites its evidence, and prices the resulting policy against
-the alternatives. "RUL = 42" is not actionable on a flight line, and an RMSE does not
-tell a programme manager whether to change how a fleet is maintained.
+Predicts remaining useful life for turbofan engines, turns each prediction into a maintenance work order that cites its evidence, and prices the resulting policy against the alternatives. "RUL = 42" is not actionable on a flight line, and an RMSE does not tell a programme manager whether to change how a fleet is maintained.
 
 ![Engine detail](docs/screenshots/Engine.png)
 
-*One engine replayed cycle by cycle: the prediction converging on truth, the interval
-narrowing, and the features moving it.*
+*One engine replayed cycle by cycle: the prediction converging on truth, the interval narrowing, and the features moving it.*
 
 ## Impact
 
@@ -20,12 +16,9 @@ A 100 engine fleet, moving from a fixed 150 cycle schedule to condition-based pu
 | Fixed interval | $18.7M | 7 | 377 | 5,700 cycles |
 | **Predictive** | **$13.1M** | **0** | **300** | **2,756 cycles** |
 
-**$5.6M saved against the fixed schedule, a 30% reduction, every unscheduled failure
-removed and 77 fewer downtime days.** Annualised at 300 cycles per engine per year, that
-is $8.1M.
+**$5.6M saved against the fixed schedule, a 30% reduction, every unscheduled failure removed and 77 fewer downtime days.** Annualised at 300 cycles per engine per year, that is $8.1M.
 
-Assumptions are UI inputs, not constants: $750k per unscheduled failure, $120k per
-scheduled pull, $400 per wasted cycle, 15 cycle parts lead time.
+**All financials are assumptions and are UI inputs, not constants: $750k per unscheduled failure, $120k per scheduled pull, $400 per wasted cycle, 15 cycle parts lead time.**
 
 ## Accuracy
 
@@ -44,10 +37,7 @@ scheduled pull, $400 per wasted cycle, 15 cycle parts lead time.
 | **LightGBM** | **15.0** | **14.5** | **311** | 1.9 s |
 | 1D-CNN | 16.7 | 15.8 | 405 | 52 s |
 
-Models were chosen on held-out engines; the test set was scored once. Published deep
-learning results on FD001 sit around 11 to 14 RMSE, which the small CNN here does not
-reach. That makes the production choice easy: the tree model is more accurate, trains in
-1.9 s against 52 s, carries its own uncertainty and attributions, and ships as a text file.
+Models were chosen on held-out engines; the test set was scored once. Published deep learning results on FD001 sit around 11 to 14 RMSE, which the small CNN here does not reach (a certain next step if chasing benchmarks). That makes the production choice easy: the tree model is more accurate, trains in 1.9 s against 52 s, carries its own uncertainty and attributions, and ships as a text file.
 
 ## Run it
 
@@ -58,31 +48,31 @@ uv run pytest
 uv run streamlit run src/copilot/app.py
 ```
 
-Work order generation needs `ANTHROPIC_API_KEY`. Everything else runs offline on CPU.
+Work order generation needs `ANTHROPIC_API_KEY` environment variable set. Everything else runs offline on CPU.
 
 ## Screens
 
-Every number the model cited, checked against source data before the work order is shown.
+Every number the model cited, checked against source data before the work order is shown:
 
 ![Work order and its audit](docs/screenshots/Work_Order.png)
 
-Triage by predicted life. Ground truth is behind a toggle, off by default, because a planner would not have that column.
+Triage by predicted life. Ground truth is behind a toggle, off by default, because a planner would not have that column:
 
 ![Fleet](docs/screenshots/Fleet.png)
 
-The business case, with the cost cliff below 15 cycles where warnings arrive inside the parts lead time.
+The business case, with the cost cliff below 15 cycles where warnings arrive inside the parts lead time:
 
 ![Business case](docs/screenshots/Business.png)
 
-Work order quality measured, including whether the manual earns its place in the prompt.
+Work order quality measured, including whether the manual earns its place in the prompt:
 
 ![Work order evaluation](docs/screenshots/Eval1.png)
 
-The five worst predictions, each with a hypothesis derived from that engine's own data.
+The five worst predictions, each with a hypothesis derived from that engine's own data:
 
 ![Failure analysis](docs/screenshots/Eval2.png)
 
-## How it works
+## Architecture
 
 ```
 C-MAPSS -> features -> LightGBM (point + quantiles) -> predictions.parquet -> Streamlit
@@ -144,7 +134,9 @@ has a genuine optimum near 20 cycles and a cliff below 15.
 ## What is real and what is not
 
 **Real:** the C-MAPSS dataset from NASA's Prognostics Center of Excellence, itself
-simulated degradation rather than measurements from hardware. **Synthetic:** the
+simulated degradation rather than measurements from hardware. 
+
+**Synthetic:** the
 maintenance logs and the manual in `src/copilot/manual.md`; part numbers and task codes
 are invented. **Not included:** integration with any maintenance system, and any
 airworthiness judgement. The system recommends, people decide.
@@ -155,7 +147,7 @@ airworthiness judgement. The system recommends, people decide.
   two models both passed all eight rules on one engine and named different subsystems,
   which is why agreement is reported beside the groundedness rate.
 - **Quality is measured automatically only.** No human rubric, no LLM judge, so nothing
-  scores whether an action is the right action.
+  scores whether an action is the right action. This is a certain next step done with a domain professional.
 - **Sensor descriptions in prose are unverified.** Paraphrase detection was tried and
   rejected: it flagged 8 of 45 constructions with 1 real error, and tightening the phrase
   boundary removed the true positive along with the false ones.
